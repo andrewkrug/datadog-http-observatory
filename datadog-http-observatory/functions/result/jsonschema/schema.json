@@ -1,0 +1,46 @@
+{
+    "$schema": "http://datadog.com/draft-01/observatory-schema#",
+    "$id": "http://datadog.com/observatory.schema.json",
+    "title": "Mozilla Web Observatory JSON Object",
+    "description": "A scan record containing scale score information.",
+    "type": "object",
+    "properties": {
+        "event_id": {
+            "description": "The uuid of the event to prevent false de-duplication.",
+            "type": "string"
+        },
+        "date": {
+            "description": "An ISO8601 datetime.",
+            "type": "date-time"
+        },
+        "domain": {
+            "description": "The domain scanned by the Mozilla Web Observatory.",
+            "type": "string"
+        },
+        "grade": {
+            "description": "The letter grade produced by the observatory scan A-F.",
+            "type": "string"
+        },
+        "score": {
+            "description": "The numeric representation of the score.",
+            "type": "integer"
+        },
+        "tests_failed": {
+            "description": "The number of failing tests.",
+            "type": "integer"
+        },
+        "tests_passed": {
+            "description": "The number of passing tests.",
+            "type": "integer"
+        }
+    },
+    "required": [
+        "event_id",
+        "date",
+        "domain",
+        "grade",
+        "score",
+        "tests_failed",
+        "tests_passed"
+    ]
+}

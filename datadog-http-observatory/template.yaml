@@ -1,0 +1,124 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  datadog-http-observatory
+  SAM template for a observatory scanner workflow in AWS step functions.
+Resources:
+  ScraperLambdaRole: 
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument: 
+        Version: '2012-10-17'
+        Statement: 
+          - Effect: Allow
+            Principal: 
+              Service: 
+                - lambda.amazonaws.com
+            Action: 
+            - sts:AssumeRole
+      Path: '/'
+      Policies: 
+        - 
+          PolicyName: ScraperPolicy
+          PolicyDocument: 
+            Version: '2012-10-17'
+            Statement:
+              - 
+                Effect: Allow
+                Action:
+                  - logs:*
+                Resource: arn:aws:logs:*:*:*
+              - 
+                Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                  - ssm:DescribeParameters
+                Resource: 'arn:aws:ssm:*:*:parameter/datadog/observatory_scanner_domains'
+  ResultLambdaRole: 
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument: 
+        Version: '2012-10-17'
+        Statement: 
+          - Effect: Allow
+            Principal: 
+              Service: 
+                - lambda.amazonaws.com
+            Action: 
+            - sts:AssumeRole
+      Path: '/'
+      Policies: 
+        - 
+          PolicyName: ScraperPolicy
+          PolicyDocument: 
+            Version: '2012-10-17'
+            Statement:
+              - 
+                Effect: Allow
+                Action:
+                  - logs:*
+                Resource: arn:aws:logs:*:*:*
+              - 
+                Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                  - ssm:DescribeParameters
+                Resource: 'arn:aws:ssm:*:*:parameter/datadog/observatory_dd_api_key'
+  ObservatoryStateMachine:
+    Type: AWS::Serverless::StateMachine # More info about State Machine Resource: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-statemachine.html
+    Properties:
+      DefinitionUri: statemachine/scanner.asl.json
+      DefinitionSubstitutions:
+        ScraperFunctionArn: !GetAtt ScraperFunction.Arn
+        ScannerFunctionArn: !GetAtt ScannerFunction.Arn
+        ResultFunctionArn: !GetAtt ResultFunction.Arn
+      Events:
+        HourlyScanningSchedule:
+          Type: Schedule # More info about Schedule Event Source: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-property-statemachine-schedule.html
+          Properties:
+            Description: Schedule to run the certificate transparency scraper and scan sites.
+            Enabled: False # This schedule is disabled by default to avoid incurring charges.
+            Schedule: "rate(1 hour)"
+      Policies: # Find out more about SAM policy templates: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ScraperFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ScannerFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ResultFunction
+
+  ScraperFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-function.html
+    Properties:
+      CodeUri: functions/scraper/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      Role: !GetAtt [ ScraperLambdaRole, Arn ]
+      Timeout: 60
+
+  ScannerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/scanner/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      Timeout: 900
+
+  ResultFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/result/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      Role: !GetAtt [ ResultLambdaRole, Arn ]
+      Timeout: 900
+
+Outputs:
+  ObservatoryStateMachineArn:
+    Description: "Observatory State machine ARN"
+    Value: !Ref ObservatoryStateMachine
+  ObservatoryStateMachineRoleArn:
+    Description: "IAM Role created for the State machine based on the specified SAM Policy Templates"
+    Value: !GetAtt ObservatoryStateMachineRole.Arn

@@ -1,0 +1,51 @@
+{
+    "Comment": "A state machine to manage Mozilla Web Observatory Scanning.",
+    "StartAt": "Scrape Logs",
+    "States": {
+        "Scrape Logs": {
+            "Type": "Task",
+            "Resource": "${ScraperFunctionArn}",
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "States.TaskFailed"
+                    ],
+                    "IntervalSeconds": 15,
+                    "MaxAttempts": 5,
+                    "BackoffRate": 1.5
+                }
+            ],
+            "Next": "Scan Sites"
+        },
+        "Scan Sites": {
+            "Type": "Task",
+            "Resource": "${ScannerFunctionArn}",
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "States.TaskFailed"
+                    ],
+                    "IntervalSeconds": 15,
+                    "MaxAttempts": 5,
+                    "BackoffRate": 1.5
+                }
+            ],
+            "Next": "Ship Results"
+        },
+        "Ship Results": {
+            "Type": "Task",
+            "Resource": "${ResultFunctionArn}",
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "States.TaskFailed"
+                    ],
+                    "IntervalSeconds": 15,
+                    "MaxAttempts": 5,
+                    "BackoffRate": 1.5
+                }
+            ],
+            "End": true
+        }
+    }
+}
